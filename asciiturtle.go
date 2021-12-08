@@ -108,8 +108,8 @@ func (p *Pen) drawTo(x1, y1 int) {
 		t := float64(i) / d
 		x, y := lerpPoint(x0, y0, x1, y1, t)
 
-		if x1 < 0 || x1 >= p.Canvas.Width() ||
-			y1 < 0 || y1 >= p.Canvas.Height() {
+		if x < 0 || x >= p.Canvas.Width() ||
+			y < 0 || y >= p.Canvas.Height() {
 			break
 		}
 
