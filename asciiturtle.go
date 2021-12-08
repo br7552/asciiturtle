@@ -13,6 +13,7 @@ type Pen struct {
 	X, Y    int
 	Char    byte
 	Heading float64
+	penUp   bool
 }
 
 func NewPen(canvas Canvas, char byte, x, y int) (*Pen, error) {
@@ -20,12 +21,18 @@ func NewPen(canvas Canvas, char byte, x, y int) (*Pen, error) {
 		return nil, fmt.Errorf("canvas must not be nil")
 	}
 
-	if x < 0 || x >= canvas.Width() {
+	switch {
+	case x < 0:
 		x = 0
+	case x >= canvas.Width():
+		x = canvas.Width() - 1
 	}
 
-	if y < 0 || y >= canvas.Width() {
+	switch {
+	case y < 0:
 		y = 0
+	case y >= canvas.Height():
+		y = canvas.Height() - 1
 	}
 
 	return &Pen{
@@ -36,15 +43,23 @@ func NewPen(canvas Canvas, char byte, x, y int) (*Pen, error) {
 	}, nil
 }
 
+func (p *Pen) PenUp() {
+	p.penUp = true
+}
+
+func (p *Pen) PenDown() {
+	p.penUp = false
+}
+
 func (p *Pen) Dot() {
+	if p.penUp {
+		return
+	}
+
 	p.Canvas[p.Y][p.X] = p.Char
 }
 
 func (p *Pen) Goto(x, y int) {
-	if x < 0 || x >= p.Canvas.Width() || y < 0 || y >= p.Canvas.Height() {
-		return
-	}
-
 	switch {
 	case x < 0:
 		x = 0
@@ -59,41 +74,61 @@ func (p *Pen) Goto(x, y int) {
 		y = p.Canvas.Height() - 1
 	}
 
-	for p.X != x || p.Y != y {
-		switch {
-		case p.X < x:
-			p.X++
-		case p.X > x:
-			p.X--
-		}
-
-		switch {
-		case p.Y < y:
-			p.Y++
-		case p.Y > y:
-			p.Y--
-		}
-
-		p.Dot()
-	}
+	p.X = x
+	p.Y = y
 }
 
 func (p *Pen) Forward(distance int) {
 	d := float64(distance)
 
-	x := p.X + int(d*math.Cos(p.Heading*degToRad))
-	y := p.Y - int(d*math.Sin(p.Heading*degToRad))
+	x1 := p.X + int(d*math.Cos(p.Heading*degToRad))
+	y1 := p.Y - int(d*math.Sin(p.Heading*degToRad))
 
-	p.Goto(x, y)
+	p.drawTo(x1, y1)
+
 }
 
 func (p *Pen) Backward(distance int) {
 	d := float64(distance)
 
-	x := p.X - int(d*math.Cos(p.Heading*degToRad))
-	y := p.Y + int(d*math.Sin(p.Heading*degToRad))
+	x1 := p.X - int(d*math.Cos(p.Heading*degToRad))
+	y1 := p.Y + int(d*math.Sin(p.Heading*degToRad))
 
-	p.Goto(x, y)
+	p.drawTo(x1, y1)
+}
+
+func (p *Pen) drawTo(x1, y1 int) {
+	x0 := p.X
+	y0 := p.Y
+
+	d := math.Max(math.Abs(float64(x1)-float64(x0)),
+		math.Abs(float64(y1)-float64(y0)))
+
+	for i := 0; i <= int(d); i++ {
+		t := float64(i) / d
+		x, y := lerpPoint(x0, y0, x1, y1, t)
+
+		if x1 < 0 || x1 >= p.Canvas.Width() ||
+			y1 < 0 || y1 >= p.Canvas.Height() {
+			break
+		}
+
+		p.X = x
+		p.Y = y
+
+		p.Dot()
+	}
+}
+
+func lerpPoint(x0, y0, x1, y1 int, t float64) (int, int) {
+	x := int(math.Round(lerp(float64(x0), float64(x1), t)))
+	y := int(math.Round(lerp(float64(y0), float64(y1), t)))
+
+	return x, y
+}
+
+func lerp(n, m, t float64) float64 {
+	return n + t*(m-n)
 }
 
 func (p *Pen) Right(deg float64) {
