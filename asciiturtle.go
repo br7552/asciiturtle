@@ -6,11 +6,13 @@ import (
 	"strings"
 )
 
+const degToRad = math.Pi / 180.0
+
 type Pen struct {
 	Canvas  Canvas
 	X, Y    int
 	Char    byte
-	Heading int
+	Heading float64
 }
 
 func NewPen(canvas Canvas, char byte, x, y int) (*Pen, error) {
@@ -18,67 +20,88 @@ func NewPen(canvas Canvas, char byte, x, y int) (*Pen, error) {
 		return nil, fmt.Errorf("canvas must not be nil")
 	}
 
-	pen := Pen{
+	if x < 0 || x >= canvas.Width() {
+		x = 0
+	}
+
+	if y < 0 || y >= canvas.Width() {
+		y = 0
+	}
+
+	return &Pen{
 		Canvas: canvas,
+		X:      x,
+		Y:      y,
 		Char:   char,
-	}
-
-	err := pen.Goto(x, y)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pen, nil
+	}, nil
 }
 
 func (p *Pen) Dot() {
 	p.Canvas[p.Y][p.X] = p.Char
 }
 
-func (p *Pen) Goto(x, y int) error {
+func (p *Pen) Goto(x, y int) {
 	if x < 0 || x >= p.Canvas.Width() || y < 0 || y >= p.Canvas.Height() {
-		return fmt.Errorf("(%d,%d) must be within %dx%d canvas", x, y,
-			p.Canvas.Width(), p.Canvas.Height())
+		return
 	}
 
-	p.X = x
-	p.Y = y
+	switch {
+	case x < 0:
+		x = 0
+	case x >= p.Canvas.Width():
+		x = p.Canvas.Width() - 1
+	}
 
-	return nil
+	switch {
+	case y < 0:
+		y = 0
+	case y >= p.Canvas.Height():
+		y = p.Canvas.Height() - 1
+	}
+
+	for p.X != x || p.Y != y {
+		switch {
+		case p.X < x:
+			p.X++
+		case p.X > x:
+			p.X--
+		}
+
+		switch {
+		case p.Y < y:
+			p.Y++
+		case p.Y > y:
+			p.Y--
+		}
+
+		p.Dot()
+	}
 }
 
 func (p *Pen) Forward(distance int) {
-	for i := 0; i < distance; i++ {
-		x := p.X + int(math.Round(math.Cos(float64(p.Heading))))
-		y := p.Y + int(math.Round(math.Sin(float64(p.Heading))))
+	d := float64(distance)
 
-		if err := p.Goto(x, y); err != nil {
-			break
-		}
+	x := p.X + int(d*math.Cos(p.Heading*degToRad))
+	y := p.Y - int(d*math.Sin(p.Heading*degToRad))
 
-		p.Dot()
-	}
+	p.Goto(x, y)
 }
 
 func (p *Pen) Backward(distance int) {
-	for i := 0; i < distance; i++ {
-		x := p.X - int(math.Round(math.Cos(float64(p.Heading))))
-		y := p.Y - int(math.Round(math.Sin(float64(p.Heading))))
+	d := float64(distance)
 
-		if err := p.Goto(x, y); err != nil {
-			break
-		}
+	x := p.X - int(d*math.Cos(p.Heading*degToRad))
+	y := p.Y + int(d*math.Sin(p.Heading*degToRad))
 
-		p.Dot()
-	}
+	p.Goto(x, y)
 }
 
-func (p *Pen) Right(deg int) {
-	p.Heading += deg
-}
-
-func (p *Pen) Left(deg int) {
+func (p *Pen) Right(deg float64) {
 	p.Heading -= deg
+}
+
+func (p *Pen) Left(deg float64) {
+	p.Heading += deg
 }
 
 type Canvas [][]byte

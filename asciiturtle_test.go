@@ -88,7 +88,7 @@ func TestPen(t *testing.T) {
 	assertCanvas(t, got, want)
 
 	pen.Left(135)
-	pen.Forward(3)
+	pen.Forward(2)
 
 	got = canvas.String()
 	want = "#### \n" +
