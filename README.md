@@ -1,2 +1,2 @@
 # asciiturtle
-ASCII Turtle Graphics
+Turtle graphics for ascii
